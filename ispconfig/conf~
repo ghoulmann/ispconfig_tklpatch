@@ -1,0 +1,122 @@
+#!/bin/bash -ex
+
+#Check for root
+
+LUID=$(id -u)
+if [[ $LUID -ne 0 ]]; then
+echo "$0 must be run as root"
+exit 1
+fi
+
+#ISPConfig TKLPatch
+
+#set hostname
+
+HOSTNAME=ispconfig
+echo "$HOSTNAME" > /etc/hostname
+sed -i "s|127.0.1.1 \(.*\)|127.0.1.1 $HOSTNAME|" /etc/hosts
+
+#per instructions
+hostname
+hostname -f
+
+#add squeeze updates to sources.list.d - for clamav primarily
+
+echo "deb http://ftp.de.debian.org/debian/ squeeze-updates main" > /etc/apt/sources.list.d/updates.list
+
+#Be in real bash: will preseed work? Answer "no"
+
+dpkg-reconfigure dash
+
+#install function
+
+install ()
+{
+	apt-get update
+	DEBIAN_FRONTEND=noninteractive apt-get -y \
+        -o DPkg::Options::=--force-confdef \
+        -o DPkg::Options::=--force-confold \
+        install $@
+}
+
+
+#install from repos
+install ntp \
+	ntpdate \
+	postfix-mysql \
+	postfix-doc \
+	mysql-client \
+	getmail4 \
+	rkhunter \
+	binutils \
+	dovecot-imapd \
+	dovecot-pop3d	\
+	sudo \
+	amavisd-new \
+	spamassassin \
+	clamav \
+	clamav-daemon \
+	zoo \
+	unzip \
+	bzip2 \
+	arj \
+	nomarch \
+	lzop \
+	cabextract \
+	apt-listchanges \
+	libnet-ldap-perl \
+	libauthen-sasl-perl \
+	clamav-docs \
+	daemon \
+	libio-string-perl \
+	libio-socket-ssl-perl \
+	libnet-ident-perl \
+	zip \
+	libnet-dns-perl \
+	apache2 \
+	apache2.2-common \
+	apache2-doc \
+	apache2-mpm-prefork \
+	apache2-utils \
+	libexpat1 \
+	ssl-cert \
+	libapache2-mod-php5 \
+	php5 \
+	php5-common \
+	php5-gd \
+	php5-mysql \
+	php5-imap \
+	php5-cli \
+	php5-cgi \
+	libapache2-mod-fcgid \
+	apache2-suexec \
+	php-pear \
+	php-auth \
+	php5-mcrypt \
+	mcrypt \
+	php5-imagick \
+	imagemagick \
+	libapache2-mod-suphp \
+	libruby \
+	libapache2-mod-ruby \
+	libapache2-mod-python \
+	
+
+
+#Postfix submission and smtps sections: overlay
+
+#Comment out bind address for mysql
+sed -i "s|bind-address = 127.0.0.1|#bind-address = 127.0.0.1|" /etc/mysql/my.cnf
+
+#restart mysql
+service mysql restart
+
+#Remove Spamassassin Service to free RAM
+service spamassassin stop
+update-rc.d -f spamassassin remove
+
+#modules
+a2enmod suexec rewrite ssl actions include
+service apache2 restart
+
+
